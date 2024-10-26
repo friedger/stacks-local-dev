@@ -128,21 +128,12 @@ fi
 mkdir -p "${SCRIPTPATH}/persistent-data/${NETWORK}/stacks-blockchain" > /dev/null  2>&1
 mkdir -p "${SCRIPTPATH}/persistent-data/${NETWORK}/postgres" > /dev/null  2>&1
 
-PGDUMP_URL="https://archive.hiro.so/${NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${POSTGRES_VERSION}-${STACKS_BLOCKCHAIN_API_VERSION}-${DUMP_VERSION}.dump"
-PGDUMP_URL_SHA256="https://archive.hiro.so/${NETWORK}/stacks-blockchain-api-pg/stacks-blockchain-api-pg-${POSTGRES_VERSION}-${STACKS_BLOCKCHAIN_API_VERSION}-${DUMP_VERSION}.sha256"
-PGDUMP_DEST="${SCRIPTPATH}/stacks-blockchain-api-pg-${POSTGRES_VERSION}-${STACKS_BLOCKCHAIN_API_VERSION}-${DUMP_VERSION}.dump"
-PGDUMP_DEST_SHA256="${SCRIPTPATH}/stacks-blockchain-api-pg-${POSTGRES_VERSION}-${STACKS_BLOCKCHAIN_API_VERSION}-${DUMP_VERSION}.dump.sha256"
-
 CHAINDATA_URL="https://archive.hiro.so/${NETWORK}/stacks-blockchain/${NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.tar.gz"
 CHAINDATA_URL_SHA256="https://archive.hiro.so/${NETWORK}/stacks-blockchain/${NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.sha256"
 CHAINDATA_DEST="${SCRIPTPATH}/${NETWORK}-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.tar.gz"
 CHAINDATA_DEST_SHA256="${SCRIPTPATH}/${NETWORK}-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.tar.gz.sha256"
 
 
-${VERBOSE} && log "  PGDUMP_URL:  ${PGDUMP_URL}"
-${VERBOSE} && log "  PGDUMP_URL_SHA256: ${PGDUMP_URL_SHA256}"
-${VERBOSE} && log "  PGDUMP_DEST:  ${PGDUMP_DEST}"
-${VERBOSE} && log "  PGDUMP_DEST_SHA256: ${PGDUMP_DEST_SHA256}"
 ${VERBOSE} && log "  CHAINDATA_URL: ${CHAINDATA_URL}"
 ${VERBOSE} && log "  CHAINDATA_URL_SHA256: ${CHAINDATA_URL_SHA256}"
 ${VERBOSE} && log "  CHAINDATA_DEST: ${CHAINDATA_DEST}"
@@ -153,10 +144,6 @@ if check_network "${PROFILE}"; then
     ${VERBOSE} && log "Stacks Blockchain services are not running"
     ${VERBOSE} && log "  Continuing"
 fi
-
-download_file ${PGDUMP_URL} ${PGDUMP_DEST}
-download_file ${PGDUMP_URL_SHA256} ${PGDUMP_DEST_SHA256}
-verify_checksum ${PGDUMP_DEST} ${PGDUMP_DEST_SHA256}
 
 download_file ${CHAINDATA_URL} ${CHAINDATA_DEST}
 download_file ${CHAINDATA_URL_SHA256} ${CHAINDATA_DEST_SHA256}
@@ -171,51 +158,9 @@ log
 log "  Chowning data to ${CURRENT_USER}"
 chown -R ${CURRENT_USER} "${SCRIPTPATH}/persistent-data/${NETWORK}" || exit_error "${COLRED}Error${COLRESET} setting file permissions"
 
-log 
-log "Importing postgres data"
-log "  Starting postgres container: ${CONTAINER}"
 
-eval "docker run -d --rm --name ${CONTAINER} --shm-size=${PG_SHMSIZE:-256MB} -e POSTGRES_PASSWORD=${PG_PASSWORD} -v ${PGDUMP_DEST}:/tmp/stacks_node_postgres.dump -v ${SCRIPTPATH}/persistent-data/${NETWORK}/postgres:/var/lib/postgresql/data postgres:${POSTGRES_VERSION}-alpine > /dev/null  2>&1" || exit_error "${COLRED}Error${COLRESET} starting postgres container"
-log "  Sleeping for 15s to give time for Postgres to start"
-sleep 15
-
-log
-log "Restoring postgres data from ${SCRIPTPATH}/stacks-blockchain-api-pg-${POSTGRES_VERSION}-${STACKS_BLOCKCHAIN_API_VERSION}-${DUMP_VERSION}.dump"
-echo "docker exec ${CONTAINER} sh -c \"pg_restore --username ${PG_USER} --verbose --create --dbname postgres /tmp/stacks_node_postgres.dump\"" || exit_error "${COLRED}Error${COLRESET} restoring postgres data"
-eval "docker exec ${CONTAINER} sh -c \"pg_restore --username ${PG_USER} --verbose --create --dbname postgres /tmp/stacks_node_postgres.dump\"" || exit_error "${COLRED}Error${COLRESET} restoring postgres data"
-log "Setting postgres user password from .env for ${PG_USER}"
-echo "docker exec -it ${CONTAINER} sh -c \"psql -U ${PG_USER} -c \\\"ALTER USER ${PG_USER} PASSWORD '${PG_PASSWORD}';\\\"\" " || exit_error "${COLRED}Error${COLRESET} setting postgres password for ${PG_USER}"
-eval "docker exec -it ${CONTAINER} sh -c \"psql -U ${PG_USER} -c \\\"ALTER USER ${PG_USER} PASSWORD '${PG_PASSWORD}';\\\"\" " || exit_error "${COLRED}Error${COLRESET} setting postgres password for ${PG_USER}"
-
-if [[ ${PG_DATABASE} != "stacks_blockchain_api" && ${PG_SCHEMA} != "stacks_blockchain_api" ]];then
-    log "dropping restored schema stacks_blockchain_api.public"
-    echo "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d stacks_blockchain_api -c \\\"drop SCHEMA if exists public;\\\"\" " || exit_error "${COLRED}Error${COLRESET} dropping schema public"
-    eval "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d stacks_blockchain_api -c \\\"drop SCHEMA if exists public;\\\"\" " || exit_error "${COLRED}Error${COLRESET} dropping schema public"
-
-    log "altering restored schema stacks_blockchain_api -> ${PG_SCHEMA:-public}"
-    echo "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d stacks_blockchain_api -c \\\"ALTER SCHEMA stacks_blockchain_api RENAME TO ${PG_SCHEMA:-public};\\\"\" " || exit_error "${COLRED}Error${COLRESET} altering schema stacks_blockchain_api -> ${PG_SCHEMA:-public}"
-    eval "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d stacks_blockchain_api -c \\\"ALTER SCHEMA stacks_blockchain_api RENAME TO ${PG_SCHEMA:-public};\\\"\" " || exit_error "${COLRED}Error${COLRESET} altering schema stacks_blockchain_api -> ${PG_SCHEMA:-public}"
-fi
-if [[ ${PG_DATABASE} == "postgres" ]];then
-    log "dropping db ${PG_DATABASE}"
-    echo "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d template1 -c \\\"DROP database ${PG_DATABASE};\\\"\" " || exit_error "${COLRED}Error${COLRESET} dropping db ${PG_DATABASE}"
-    eval "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d template1 -c \\\"DROP database ${PG_DATABASE};\\\"\" " || exit_error "${COLRED}Error${COLRESET} dropping db ${PG_DATABASE}"
-fi
-if [[ ${PG_DATABASE} != "stacks_blockchain_api" ]]; then
-    log "renaming db stacks_blockchain_api to ${PG_DATABASE}"
-    echo "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d template1 -c \\\"ALTER DATABASE stacks_blockchain_api RENAME TO ${PG_DATABASE};\\\"\" "|| exit_error "${COLRED}Error${COLRESET} renaming db stacks_blockchain_api to ${PG_DATABASE}"
-    eval "docker exec -it ${CONTAINER} sh -c \"psql -U postgres -d template1 -c \\\"ALTER DATABASE stacks_blockchain_api RENAME TO ${PG_DATABASE};\\\"\" "|| exit_error "${COLRED}Error${COLRESET} renaming db stacks_blockchain_api to ${PG_DATABASE}"
-fi
-log "Stopping postgres container"
-eval "docker stop ${CONTAINER} > /dev/null  2>&1" || exit_error "${COLRED}Error${COLRESET} stopping postgres container ${CONTAINER}"
 
 log "Deleting downloaded archive files"
-if [ -f ${PGDUMP_DEST} ]; then
-   eval "rm -f ${PGDUMP_DEST}" || exit_error "${COLRED}Error${COLRESET} deleting ${PGDUMP_DEST}"
-fi
-if [ -f ${PGDUMP_DEST_SHA256} ]; then
-   eval "rm -f ${PGDUMP_DEST_SHA256}" || exit_error "${COLRED}Error${COLRESET} deleting ${PGDUMP_DEST_SHA256}"
-fi
 if [ -f ${CHAINDATA_DEST} ]; then
    eval "rm -f ${CHAINDATA_DEST}" || exit_error "${COLRED}Error${COLRESET} deleting ${CHAINDATA_DEST}"
 fi
