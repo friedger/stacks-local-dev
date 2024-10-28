@@ -24,10 +24,6 @@ private_neighbors = false
 events_keys = ["stackerdb", "block_proposal", "burn_blocks"]
 endpoint = "stacks-signer:30000"
 
-[[events_observer]]
-endpoint = "stacks-blockchain-api:3700"
-events_keys = ["*"]
-timeout_ms = 60_000
 
 [[ustx_balance]]
 address = "ST2QKZ4FKHAH1NQKYKYAYZPY440FEPK7GZ1R5HBP2"

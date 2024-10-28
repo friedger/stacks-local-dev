@@ -15,11 +15,6 @@ commit_anchor_block_within = 5000
 events_keys = ["stackerdb", "block_proposal", "burn_blocks"]
 endpoint = "stacks-signer:30000"
 
-[[events_observer]]
-endpoint = "stacks-blockchain-api:3700"
-events_keys = ["*"]
-timeout_ms = 60_000
-
 [[ustx_balance]]
 # "mnemonic": "point approve language letter cargo rough similar wrap focus edge polar task olympic tobacco cinnamon drop lawn boring sort trade senior screen tiger climb",
 # "keyInfo": {
