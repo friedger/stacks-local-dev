@@ -589,9 +589,6 @@ docker_down() {
 		return
 	fi
 	# sanity checks before stopping services
-	if ! check_event_replay;then
-		log_exit "Event-replay in progress. Refusing to stop services"
-	fi
 	if [[ "${NETWORK}" == "mainnet" || "${NETWORK}" == "testnet" ]] && [ "${PROFILE}" != "bns" ]; then
 		# if this is mainnet/testnet and the profile is not bns, stop the blockchain service first
 		${VERBOSE} && log "calling ordered_stop function"
