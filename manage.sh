@@ -242,75 +242,6 @@ check_network() {
 	return 1
 }
 
-# Check if there is an event-replay operation in progress
-check_event_replay(){
-	${VERBOSE} && log "Checking status of API event-replay"
-	##
-	## Check if import has started and save return code
-	if [[ "${ACTION}" == "export" || "${ACTION}" == "import" ]]; then
-		log "${ACTION} Checking for an active event-replay import"
-	fi
-	eval "docker logs stacks-blockchain-api 2>&1 | head -n20 | grep -q 'Importing raw event requests'" || test ${?} -eq 141
-	check_import_started="${?}"
-	${VERBOSE} && log "check_import_started: ${check_import_started}"
-	##
-	## Check if import has completed and save return code
-	if [[ "${ACTION}" == "export" || "${ACTION}" == "import" ]]; then
-		log "${ACTION} Checking for a completed event-replay import"
-	fi
-	eval "docker logs stacks-blockchain-api --tail 20 2>&1 | grep -q 'Event import and playback successful'" || test ${?} -eq 141
-	check_import_finished="${?}"	
-	${VERBOSE} && log "check_import_finished: ${check_import_finished}"
-	##
-	## Check if export has started and save return code
-	if [[ "${ACTION}" == "export" || "${ACTION}" == "import" ]]; then
-		log "${ACTION} Checking for an active event-replay export"
-	fi
-	eval "docker logs stacks-blockchain-api 2>&1 | head -n20 | grep -q 'Export started'" || test ${?} -eq 141
-	check_export_started="${?}"
-	${VERBOSE} && log "check_export_started: ${check_export_started}"
-	##
-	## Check if export has completed and save return code
-	if [[ "${ACTION}" == "export" || "${ACTION}" == "import" ]]; then
-		log "${ACTION} Checking for a completed event-replay export"
-	fi
-	eval "docker logs stacks-blockchain-api --tail 20 2>&1 | grep -q 'Export successful'" || test ${?} -eq 141
-	check_export_finished="${?}"
-	${VERBOSE} && log "check_export_finished: ${check_export_finished}"
-
-	if [ "${check_import_started}" -eq "0" ]; then
-		# Import has started
-		${VERBOSE} && log "import has started"
-		if [ "${check_import_finished}" -eq "0" ]; then
-			# Import has finished
-			log "Event import and playback has finished"
-			${VERBOSE} && log "import has finished, return 0"
-			return 0
-		fi
-		# Import hasn't finished, return 1
-		log_warn "Event import and playback is in progress"
-		${VERBOSE} && log "import has not finished, return 1"
-		return 1
-	fi
-	if [ "${check_export_started}" -eq "0" ]; then
-		# Export has started
-		${VERBOSE} && log "export has started"
-		if [ "${check_export_finished}" -eq "0" ]; then
-			# Export has finished
-			log "Event export has finished"
-			${VERBOSE} && log "export has finished, return 0"
-			return 0
-		fi
-		# Export hasn't finished, return 1
-		log_warn "Event export is in progress"
-		${VERBOSE} && log "export has not finished, return 1"
-		return 1
-	fi
-	${VERBOSE} && log "No event-replay in progress"
-	# Default return success - event-replay is not running
-	return 0
-}
-
 # Determine if a supplied container name is running
 check_container() {
 	local container="${1}"
@@ -591,9 +522,6 @@ docker_up() {
 	if check_network "${PROFILE}"; then
 		echo
 		log_exit "Stacks Blockchain services are already running"
-	fi
-	if ! check_event_replay; then
-		log_exit "Event-replay in progress. Refusing to start services"
 	fi
 
 	# Set signer env based on flag
