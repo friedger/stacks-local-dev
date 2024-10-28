@@ -102,8 +102,6 @@ exit_error() {
 ${VERBOSE} && log "Creating list of default services"
 DEFAULT_SERVICES=(
 	stacks-blockchain
-	stacks-blockchain-api
-	postgres
 )
 ${VERBOSE} && log "DEFAULT_SERVICES: ${DEFAULT_SERVICES[*]}"
 
@@ -522,10 +520,6 @@ set_flags() {
 	local array="${*}"
 	local flags=""
 	local flag_path=""
-	${VERBOSE} && log "EXPOSE_POSTGRES: ${EXPOSE_POSTGRES}"
-	if [ "${EXPOSE_POSTGRES}" -a -f "${SCRIPTPATH}/compose-files/extra-services/postgres.yaml" ]; then
-		${EXPOSE_POSTGRES} && flags="-f ${SCRIPTPATH}/compose-files/extra-services/postgres.yaml"
-    fi
 	# Case to change the path of files based on profile
 	${VERBOSE} && log "Setting optional flags for cmd to eval"
 	case ${profile} in

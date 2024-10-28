@@ -59,12 +59,6 @@ Use the command `./manage.sh -n <network> -a logs` to check the sync progress._
 curl -sL localhost:20443/v2/info | jq
 ```
 
-**stacks-blockchain-api**:
-
-```bash
-curl -sL localhost:3999/v2/info | jq
-```
-
 **proxy** _(optional argument)_:
 
 ```bash

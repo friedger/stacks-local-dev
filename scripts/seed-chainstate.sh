@@ -126,7 +126,6 @@ if [ -d "${SCRIPTPATH}/persistent-data/${NETWORK}" ];then
     rm -rf "${SCRIPTPATH}/persistent-data/${NETWORK}"
 fi
 mkdir -p "${SCRIPTPATH}/persistent-data/${NETWORK}/stacks-blockchain" > /dev/null  2>&1
-mkdir -p "${SCRIPTPATH}/persistent-data/${NETWORK}/postgres" > /dev/null  2>&1
 
 CHAINDATA_URL="https://archive.hiro.so/${NETWORK}/stacks-blockchain/${NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.tar.gz"
 CHAINDATA_URL_SHA256="https://archive.hiro.so/${NETWORK}/stacks-blockchain/${NETWORK}-stacks-blockchain-${STACKS_BLOCKCHAIN_VERSION}-${DUMP_VERSION}.sha256"
