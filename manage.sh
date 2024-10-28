@@ -728,61 +728,6 @@ download_bns_data() {
 	exit 0
 }
 
-# Perform the Hiro API event-replay
-event_replay(){
-	if [ "${STACKS_BLOCKCHAIN_API_VERSION}" == "5.0.1" ]; then
-	 	echo
-		log "${COLYELLOW}${COLBOLD}There is an open issue running event-replay with this version (${STACKS_BLOCKCHAIN_API_VERSION}) of the API${COLRESET}"
-		log "    https://github.com/hirosystems/stacks-blockchain-api/issues/1336"
-		log "For now, use prior version of the API: ${COLBOLD}4.2.1${COLRESET}"
-		log "Or sync from genesis using API: ${COLBOLD}5.0.1${COLRESET}"
-		echo
-		log_exit "${1} not supported for this version of the API"
-	fi
-	if [ "${STACKS_EXPORT_EVENTS_FILE}" != "" ]; then
-		${VERBOSE} && log "Using defined STACKS_EXPORT_EVENTS_FILE: ${STACKS_EXPORT_EVENTS_FILE}"
-		# Check if the event-replay file exists first
-		local tsv_file
-		tsv_file="${SCRIPTPATH}/persistent-data/mainnet/event-replay"/$(basename "${STACKS_EXPORT_EVENTS_FILE}")
-		if [ ! -f "${tsv_file}" ]; then
-			log_error "Missing event-replay file: ${COLCYAN}${tsv_file}${COLRESET}"
-		fi
-		${VERBOSE} && log "Using local event-replay file: ${tsv_file}"
-		if check_network "${PROFILE}"; then
-			${VERBOSE} && log "calling docker_down function"
-			docker_down
-		fi
-		PROFILE="event-replay"
-		local action="${1}"
-		SUPPORTED_FLAGS+=("api-${action}-events")
-		FLAGS_ARRAY=("api-${action}-events")
-		${VERBOSE} && log "PROFILE: ${PROFILE}"
-		${VERBOSE} && log "SUPPPORTED_FLAGS: ${SUPPORTED_FLAGS[*]}"
-		${VERBOSE} && log "FLAGS_ARRAY: ${FLAGS_ARRAY[*]}"
-		if [ ! -f "${SCRIPTPATH}/compose-files/event-replay/api-${action}-events.yaml" ]; then
-			echo
-			log_exit "Missing events compose file: ${COLCYAN}${SCRIPTPATH}/compose-files/event-replay/api-${action}-events.yaml${COLRESET}"
-		fi
-		${VERBOSE} && log "calling docker_up function"
-		docker_up
-		echo
-		log "${COLBRRED}${COLBOLD}This operation can take a long while${COLRESET}"
-		log "Check logs for completion: ${COLCYAN}${0} -n ${NETWORK} -a logs${COLRESET}"
-		if [ "${action}" == "export" ]; then
-			log "    - Look for a export log entry: ${COLYELLOW}\"Export successful.\"${COLRESET}"
-		fi
-		if [ "${action}" == "import" ]; then
-			log "    - Look for a import log entry: ${COLYELLOW}\"Event import and playback successful.\"${COLRESET}"
-		fi
-		log "${COLBOLD}Once the operation is complete${COLRESET}, restart the service with: ${COLCYAN}${0} -n ${NETWORK} -a restart${COLRESET}"
-		echo
-		exit 0
-	fi
-	echo
-	log_error "Undefined or commented ${COLYELLOW}STACKS_EXPORT_EVENTS_FILE${COLRESET} variable in ${COLCYAN}${ENV_FILE}${COLRESET}"
-	exit 0
-}
-
 # Execute the docker compose command using provided args
 run_docker() {
 	local action="${1}"
