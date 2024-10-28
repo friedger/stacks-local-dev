@@ -909,7 +909,7 @@ run_docker() {
 }
 
 # Check for required binaries, exit if missing
-for cmd in docker compose docker id; do
+for cmd in docker id; do
 	command -v "${cmd}" >/dev/null 2>&1 || log_exit "Missing command: ${cmd}"
 done
 
